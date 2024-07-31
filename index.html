@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jeopardy Game</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f7b3da; /* Pink background */
+      }
+
+      header {
+        background-color: #ff69b4; /* Pink header */
+        padding: 20px;
+        text-align: center;
+      }
+
+      h1 {
+        color: white;
+        margin: 0;
+      }
+
+      button {
+        margin: 20px;
+        padding: 10px 20px;
+        background-color: #ff1493; /* Pink button */
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+
+      thead th {
+        background-color: #ff69b4; /* Pink header */
+        color: white;
+        padding: 10px;
+      }
+
+      tbody td {
+        padding: 10px;
+        text-align: center;
+        background-color: #ffc0cb; /* Light pink cells */
+        cursor: pointer;
+      }
+
+      tbody td:hover {
+        background-color: #ffb6c1; /* Darker pink on hover */
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Jeopardy Game</h1>
+    </header>
+    <button id="restart">Restart</button>
+    <table id="jeopardy">
+      <thead>
+        <tr></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+      async function getCategoryIds() {
+        const response = await fetch(
+          "https://rithm-jeopardy.herokuapp.com/api/categories?count=100"
+        );
+        const data = await response.json();
+        const categoryIds = [];
+        for (let i = 0; i < 5; i++) {
+          // Had trouble with 6 catagories so adjusted to 5 knowing it worked that way
+          const randomIndex = Math.floor(Math.random() * data.length);
+          categoryIds.push(data[randomIndex].id);
+        }
+        return categoryIds;
+      }
+
+      async function getCategory(catId) {
+        const response = await fetch(
+          `https://rithm-jeopardy.herokuapp.com/api/category?id=${catId}`
+        );
+        const data = await response.json();
+        const categoryData = {
+          title: data.title,
+          clues: data.clues.map((clue) => ({
+            question: clue.question,
+            answer: clue.answer,
+          })),
+        };
+        return categoryData;
+      }
+
+      async function fillTable() {
+        const $thead = $("table#jeopardy thead tr");
+        const $tbody = $("table#jeopardy tbody");
+
+        $thead.empty();
+        $tbody.empty();
+
+        const categoryIds = await getCategoryIds();
+
+        for (const catId of categoryIds) {
+          const category = await getCategory(catId);
+
+          $thead.append(`<th>${category.title}</th>`);
+
+          const $categoryCells = [];
+          category.clues.forEach((clue) => {
+            const $cell = $(
+              `<td class="clue" data-question="${clue.question}" data-answer="${clue.answer}">?</td>`
+            );
+            $categoryCells.push($cell);
+          });
+          $tbody.append($("<tr>").append($categoryCells));
+        }
+      }
+
+      function handleClick(evt) {
+        const $clue = $(evt.target);
+        const question = $clue.data("question");
+        const answer = $clue.data("answer");
+
+        if ($clue.text() === "?") {
+          $clue.text(question);
+        } else if ($clue.text() === question) {
+          $clue.text(answer);
+        }
+      }
+
+      async function setupAndStart() {
+        await fillTable();
+      }
+
+      $("#restart").on("click", setupAndStart);
+      $(document).on("click", ".clue", handleClick);
+
+      $(setupAndStart);
+    </script>
+  </body>
+</html>
